@@ -1,0 +1,6 @@
+---
+sftp_users:
+  - name: customer1
+    public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAPQE8tJcJw7NhgaYYt4SR3NctIs7L9bjIv9ufroVb7P"
+  - name: customer2
+    public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGFk6LamgKiEgkAwmC7tgvienndLFYLCESl9AfimawdS"

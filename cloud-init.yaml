@@ -1,11 +1,6 @@
 #cloud-config
 locale: en_US.UTF-8
 users:
-- name: sam 
-  gecos: Sam Nelson
-  groups: [adm,dialout,cdrom,floppy,sudo,audio,dip,video,plugdev,netdev]
-  sudo: ALL=(ALL) NOPASSWD:ALL
-  shell: /bin/bash
 - name: ansible 
   gecos: Ansible User
   groups: [adm,dialout,cdrom,floppy,sudo,audio,dip,video,plugdev,netdev]
@@ -16,16 +11,8 @@ users:
   ssh_authorized_keys:
     - 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN88AfK1JrCpv/Vqphv442FEcAuXli7IbeiISr9QvrHn'
 
-write_files:
-- path: /etc/wsl.conf
-  append: true
-  content: |
-    [user]
-    default=sam
 
 packages: [ansible, openssh-server]
 
 runcmd:
    - sudo apt-get install zip curl -y
-#   - /opt/vcpkg/bootstrap-vcpkg.sh
-#   - sudo git clone https://github.com/Microsoft/vcpkg.git /opt/vcpkg

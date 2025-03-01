@@ -1,0 +1,34 @@
+---
+- name: Configure SFTP Server
+  hosts: all
+  become: True
+  remote_user: ansible
+  vars_files:
+    - sftp_users.yml
+
+  tasks:
+    - name: Set up SFTP user group
+      group:
+        name: sftpusers
+        state: present
+    
+    - name: Create SFTP users
+      user:
+        name: "{{ item.name }}"
+        groups: sftpusers
+        shell: /bin/false
+        state: present
+      with_items: "{{ sftp_users }}"
+      notify: restart sshd
+    
+    - name: Configure public keys
+      authorized_key:
+        user: "{{ item.name }}"
+        key: "{{ item.public_key }}"
+      with_items: "{{ sftp_users }}"
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: ssh
+        state: restarted
