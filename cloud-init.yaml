@@ -1,0 +1,18 @@
+#cloud-config
+locale: en_US.UTF-8
+users:
+- name: ansible 
+  gecos: Ansible User
+  groups: [adm,dialout,cdrom,floppy,sudo,audio,dip,video,plugdev,netdev]
+  sudo: ALL=(ALL) NOPASSWD:ALL
+  shell: /bin/bash
+  # Add your public key here
+  # i.g. : ssh-keygen -t ed25519
+  ssh_authorized_keys:
+    - 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN88AfK1JrCpv/Vqphv442FEcAuXli7IbeiISr9QvrHn'
+
+
+packages: [ansible, openssh-server]
+
+runcmd:
+   - sudo apt-get install zip curl -y
