@@ -5,6 +5,10 @@
   remote_user: ansible
   vars_files:
     - sftp_users.yml
+  vars:
+    sftp_directories:
+      - upload
+      - incoming
 
   tasks:
     - name: Set up SFTP user group
@@ -15,10 +19,87 @@
     - name: Create SFTP users
       user:
         name: "{{ item.name }}"
+        home: "/var/sftp/{{ item.name }}"
         groups: sftpusers
-        shell: /bin/false
+        shell: /usr/sbin/nologin
         state: present
       with_items: "{{ sftp_users }}"
+      notify: restart sshd
+    
+    - name: Update sftp root permissions
+      file:
+        path: "/var/sftp"
+        state: directory
+        owner: root
+        group: sftpusers
+        mode: '0750'
+    
+    - name: SFTP-Server | Correct ownership and permission of home directories
+      file:
+        path: "/var/sftp/{{ item.name }}"
+        owner: root
+        group: sftpusers
+        mode: '0750'
+      with_items: "{{ sftp_users }}"
+    
+    - name: Create standard sftp directories
+      file:
+        path: "/var/sftp/{{ item[0].name }}/{{ item[1] }}"
+        owner: "{{ item[0].name }}"
+        group: sftpusers
+        mode: '0750'
+        state: directory
+      with_nested:
+        - "{{ sftp_users }}"
+        - "{{ sftp_directories }}"
+
+    - name: Create chroot dev directory to allow logging inside chroot
+      file:
+        path: "/var/sftp/{{ item.name }}/dev"
+        owner: root
+        group: root
+        state: directory
+      with_items:
+        - "{{ sftp_users }}"
+
+    - name: Reconfigure rsyslog to allow logging inside chroot
+      blockinfile:
+        dest: "/etc/rsyslog.d/sshd.conf"
+        create: yes
+        block: |
+          # Create a socket for chrooted sftp users
+          {% for user in sftp_users %}
+          $AddUnixListenSocket /var/sftp/{{ user.name }}/dev/log
+          {% endfor %}
+
+          # Log sftp activity separately
+          :programname, isequal, "internal-sftp" -/var/log/sftp/verbose.log
+          :programname, isequal, "internal-sftp" ~
+
+          # Write auth activity separately
+          auth,authpriv.*  /var/log/sftp/auth.log
+      notify: restart rsyslog
+
+    - name: Update the sftp subsystem to use in-process sftp server
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '^Subsystem(\s+)sftp'
+        line: "Subsystem sftp internal-sftp -f AUTH -l INFO"
+        state: present
+      notify: restart sshd
+    
+    - name: Configure chroot only for SFTP users
+      blockinfile:
+        dest: /etc/ssh/sshd_config
+        marker: "# {mark} sftpusers config"
+        block: |
+          Match Group sftpusers
+              ChrootDirectory %h
+              AllowTCPForwarding no
+              PermitTunnel no
+              X11Forwarding no
+              ForceCommand internal-sftp -f AUTH -l INFO
+              PasswordAuthentication no
       notify: restart sshd
     
     - name: Configure public keys
@@ -31,4 +112,8 @@
     - name: restart sshd
       service:
         name: ssh
+        state: restarted
+    - name: restart rsyslog
+      service:
+        name: rsyslog
         state: restarted
